@@ -1,0 +1,79 @@
+@use '_variable.scss' as *;
+$breakPoints: (
+        'sm': 'screen and (max-width: 430px)',
+        'md': 'screen and (max-width: 768px)',
+        'lg': 'screen and (max-width: 1000px)',
+        'xl': 'screen and (max-width: 1200px)'
+) !default;
+
+@mixin mq($breakPoint: md) {
+  @media #{map-get($breakPoints, $breakPoint)} {
+    @content;
+  }
+}
+
+@mixin flex($align: flex-start, $justify: flex-start, $direction: row, $wrap: nowrap, $gap: 0, $gap-r: false) {
+  display: flex;
+  align-items: $align;
+  justify-content: $justify;
+  flex-direction: $direction;
+  flex-wrap: $wrap;
+  @if($gap-r) {
+    gap: $gap-r+px $gap+px;
+  }
+  @else {
+    gap: $gap+px;
+  }
+}
+
+@mixin font($size, $height: normal, $space: normal, $weight: 400) {
+  font-size: calc($size / 10)+rem;
+  @if $height == normal {
+    line-height: $height;
+  }
+  @else {
+    line-height: calc($height / $size);
+  }
+  @if $space == normal {
+    letter-spacing: $space;
+  }
+  @else {
+    letter-spacing:  calc($space / 100)+rem;
+  }
+  font-weight: $weight;
+}
+
+@mixin tranSet($target: all, $duration: .3, $easing: ease-out, $delay: 0) {
+  transition: $target $duration+s $easing $delay+s;
+}
+
+@mixin input($font-height: 14, $height: 40) {
+  border: 1px solid $gray-sub;
+  border-radius: 4px;
+  padding: 10px 12px;
+  width: 100%;
+  height: $height + px;
+  @include font(14, $font-height, 4);
+  &::placeholder {
+    color: $gray-sub2;
+  }
+  &:focus {
+    border-color: $dark;
+  }
+}
+
+@mixin select($font-height: 14, $height: 40) {
+  border: 1px solid $gray-sub;
+  border-radius: 4px;
+  padding: 10px 12px;
+  width: 225px;
+  height: $height + px;
+  cursor: pointer;
+  @include font(14, $font-height, 4);
+  background-position: right;
+  background-origin: content-box;
+  //background-image: url("../../img/whole/icon-angle.svg");
+  &:focus {
+    border-color: $dark;
+  }
+}

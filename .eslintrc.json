@@ -1,0 +1,28 @@
+{
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "env": {
+    "browser": true,
+    "es6": true,
+    "node": true,
+    "jquery": true
+  },
+  "extends": "plugin:@typescript-eslint/recommended",
+  "parserOptions": {
+    "sourceType": "module"
+  },
+  "plugins": [],
+  "rules": {
+    //セミコロン強制
+    "semi": [
+      "error",
+      "always"
+    ],
+    //セミコロン２つ続き禁止
+    "no-extra-semi": "error",
+    //return, throw, continue, break後のコード禁止
+    "no-unreachable": "error",
+    //宣言されていない変数禁止
+    "no-undef": "off"
+  }
+}

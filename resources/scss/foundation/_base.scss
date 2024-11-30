@@ -1,0 +1,25 @@
+@use '_variable' as *;
+@use '_mixin' as *;
+@use '_keyframes' as *;
+@import 'flatpickr/dist/flatpickr.min.css';
+
+body, html {
+  color: $font-color_default;
+  line-height: 1.6;
+  text-size-adjust: 100%;
+  background-color: $white;
+  font-family: $font-family_corp;
+  font-size: $font-size_default;
+}
+
+li {
+  list-style: none;
+}
+
+a {
+  text-decoration: none;
+}
+
+fieldset {
+  border: none;
+}
