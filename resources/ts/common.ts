@@ -64,7 +64,7 @@ renderer.setAnimationLoop(() => {
 });
 
 
-function init1() {
+function createSolarTest() {
     const canvas = document.getElementById('canvas') as HTMLCanvasElement;
     const size = { width: window.innerWidth, height: 500 };
     const scene = new THREE.Scene();
@@ -188,14 +188,97 @@ function createStarrySky(scene: THREE.Scene) {
     const starField = new THREE.Points(starsGeometry, starsMaterial);
     scene.add(starField);
 }
+function enableExplosion(scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement, size: {width: number, height :number }) {
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    const particles: THREE.Points[] = []; // 爆散中のパーティクル群
+
+    // マウスクリック時のイベントリスナー
+    renderer.domElement.addEventListener('click', (event) => {
+        // マウス位置を正規化
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / size.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / size.height) * 2 + 1;
+console.log('click');
+        // Raycasterでクリックされたオブジェクトを取得
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(scene.children);
+console.log(intersects);
+        if (intersects.length > 0) {
+            const target = intersects[0].object;
+
+            // 爆散エフェクトを作成
+            createExplosion(target, scene);
+            scene.remove(target); // 元のオブジェクトを削除
+        }
+    });
+
+    // 爆散エフェクト作成関数
+    function createExplosion(target: THREE.Object3D, scene: THREE.Scene) {
+        const geometry = (target as THREE.Mesh).geometry.clone();
+        const material = new THREE.PointsMaterial({
+            color: 0xff6600,
+            size: 0.1,
+            transparent: true,
+        });
+
+        // 頂点を点群（パーティクル）として爆散
+        const particlesMesh = new THREE.Points(geometry, material);
+        scene.add(particlesMesh);
+        particles.push(particlesMesh);
+
+        const velocity = [];
+        for (let i = 0; i < geometry.attributes.position.count; i++) {
+            velocity.push(
+                new THREE.Vector3(
+                    (Math.random() - 0.5) * 2,
+                    (Math.random() - 0.5) * 2,
+                    (Math.random() - 0.5) * 2
+                )
+            );
+        }
+        particlesMesh.userData.velocity = velocity;
+    }
+
+    // 爆散アニメーションの更新
+    function animateParticles() {
+        particles.forEach((particle, index) => {
+            const positions = particle.geometry.attributes.position;
+            const velocity = particle.userData.velocity;
+
+            for (let i = 0; i < positions.count; i++) {
+                positions.array[i * 3] += velocity[i].x * 0.1; // X軸更新
+                positions.array[i * 3 + 1] += velocity[i].y * 0.1; // Y軸更新
+                positions.array[i * 3 + 2] += velocity[i].z * 0.1; // Z軸更新
+            }
+            positions.needsUpdate = true;
+
+            // パーティクルの寿命チェック（透明度を減らす）
+            particle.material.opacity -= 0.01;
+            if (particle.material.opacity <= 0) {
+                console.log('in');
+                scene.remove(particle);
+                particles.splice(index, 1);
+            }
+        });
+
+        requestAnimationFrame(animateParticles);
+    }
+
+    animateParticles();
+}
 
 function createSolarSystem () {
     const canvas = document.getElementById('canvas2') as HTMLCanvasElement;
     const size = { width: window.innerWidth, height: 600 };
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(100, size.width / size.height, 0.1, 2000);
-    const renderer = new THREE.WebGLRenderer({ canvas });
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true});
     renderer.setSize(size.width, size.height);
+
+    // Raycaster とマウス座標を作成
+    // const raycaster = new THREE.Raycaster();
+    // const mouse = new THREE.Vector2();
 
     // 環境光と太陽光を追加
     const ambientLight = new THREE.AmbientLight(0x404040, 1); // 柔らかい光
@@ -211,7 +294,7 @@ function createSolarSystem () {
     scene.add(sun);
 
     // 惑星を格納するデータ
-    const planets = [
+    const planetsData = [
         { size: 2, color: 0x8888ff, orbitRadius: 15, speed: 0.03, offset: { x: 2, y: 0 }  },
         { size: 3, color: 0x00ff00, orbitRadius: 25, speed: 0.02, offset: { x: 7, y: 0 }  },
         { size: 4, color: 0xff0000, orbitRadius: 40, speed: 0.01, offset: { x: 15, y: 0 }  },
@@ -224,11 +307,12 @@ function createSolarSystem () {
 
     // 惑星グループ
     const planetGroups: THREE.Group[] = [];
+    const planets: THREE.Mesh[] = [];
 
-    planets.forEach((planet) => {
+    planetsData.forEach((planet) => {
         // 惑星の作成
         const geometry = new THREE.SphereGeometry(planet.size, 32, 32);
-        const material = new THREE.MeshStandardMaterial({ color: planet.color });
+        const material = new THREE.MeshPhongMaterial({ color: planet.color });
         const sphere = new THREE.Mesh(geometry, material);
 
         // 軌道の線
@@ -256,22 +340,44 @@ function createSolarSystem () {
         group.add(sphere);
         scene.add(group);
         planetGroups.push(group);
+        planets.push(sphere);
     });
 
     // カメラの設定
     camera.position.x = 10;
     camera.position.y = 20;
-    camera.position.z = 40;
+    camera.position.z = 50;
 
     // カメラコントロール
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.target.set(0, 0, 0);
     controls.update();
 
+    console.log(planets);
+    // マウスクリックイベント
+    // function onClick(event: MouseEvent) {
+    //     // マウス位置を正規化
+    //     const rect = canvas.getBoundingClientRect();
+    //     mouse.x = ((event.clientX - rect.left) / size.width) * 2 - 1;
+    //     mouse.y = -((event.clientY - rect.top) / size.height) * 2 + 1;
+    //
+    //     // Raycasterを更新
+    //     raycaster.setFromCamera(mouse, camera);
+    //
+    //     // クリックされたオブジェクトを取得
+    //     const intersects = raycaster.intersectObjects(planets);
+    //     if (intersects.length > 0) {
+    //         const clickedPlanet = intersects[0].object;
+    //         console.log('Clicked Planet:', clickedPlanet);
+    //
+    //         clickedPlanet.scale.set(+1.2, +1.2, +1.2); // クリックした惑星を少し拡大
+    //     }
+    // }
+
     // アニメーション
     const animate = () => {
         planetGroups.forEach((group, index) => {
-            const planet = planets[index];
+            const planet = planetsData[index];
             // 各グループを回転させる（軌道）
             group.rotation.y += planet.speed;
         });
@@ -280,11 +386,10 @@ function createSolarSystem () {
         requestAnimationFrame(animate);
     };
     createStarrySky(scene);
+    // canvas.addEventListener('click', onClick);
+    enableExplosion(scene, camera, renderer, canvas, size);
     animate();
 }
 
-
-
-init1();
+createSolarTest();
 createSolarSystem();
-
