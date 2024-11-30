@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import '../scss/style.scss';
+import {MeshPhongMaterial, MeshStandardMaterial} from "three";
 
 // シーン(scene)
 // 3次元空間を表し、3Dオブジェクトやライトが加えられる。
@@ -254,11 +255,13 @@ console.log(intersects);
             positions.needsUpdate = true;
 
             // パーティクルの寿命チェック（透明度を減らす）
-            particle.material.opacity -= 0.01;
-            if (particle.material.opacity <= 0) {
-                console.log('in');
-                scene.remove(particle);
-                particles.splice(index, 1);
+            if (particle.material instanceof MeshPhongMaterial || particle.material instanceof MeshStandardMaterial) {
+                particle.material.opacity -= 0.01;
+                if (particle.material.opacity <= 0) {
+                    console.log('in');
+                    scene.remove(particle);
+                    particles.splice(index, 1);
+                }
             }
         });
 
