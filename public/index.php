@@ -18,19 +18,15 @@
     </style>
 </head>
 <body>
-<header>
-	ヘッダー
-</header>
 <main>
     <div id="appElement"></div>
     <br>
     <canvas id="canvas"></canvas>
     <br>
     <canvas id="canvas2"></canvas>
+    <br>
+    <canvas id="canvas3"></canvas>
 </main>
-<footer>
-	フッター
-</footer>
 <script type="module" src="./assets/js/bundle.js"></script>
 </body>
 </html>

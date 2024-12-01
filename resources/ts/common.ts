@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import '../scss/style.scss';
-import {MeshPhongMaterial, MeshStandardMaterial} from "three";
 
 // シーン(scene)
 // 3次元空間を表し、3Dオブジェクトやライトが加えられる。
@@ -155,6 +154,7 @@ function createSolarTest() {
 }
 
 function createStarrySky(scene: THREE.Scene) {
+    //メッシュ、ライン、またはポイント ジオメトリの表現
     const starsGeometry = new THREE.BufferGeometry();
     const starCount = 1000; // 星の数
     const positions = [];
@@ -189,27 +189,47 @@ function createStarrySky(scene: THREE.Scene) {
     const starField = new THREE.Points(starsGeometry, starsMaterial);
     scene.add(starField);
 }
-function enableExplosion(scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement, size: {width: number, height :number }) {
+function enableExplosion(scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement, size: {width: number, height :number }, planets:THREE.Mesh[]) {
+    // レイキャスティングは、マウスの選択 (マウスが 3D 空間のどのオブジェクト上にあるかを判断する) などに使用
     const raycaster = new THREE.Raycaster();
+    // 2D ベクトルは、順序付けられた数値のペア (x と y のラベルが付けられている) であり、次のようなさまざまなものを表すために使用。
+    // ・2D 空間内の点 (つまり、平面上の位置)。
+    // ・平面上の方向と長さ。three.js では、長さは常に(0, 0)から(x, y)までのユークリッド距離 (直線距離) となり 、方向も(0, 0)から(x, y)に向かって測定される。
+    // ・任意の順序の数字のペア。
+    // 2D ベクトルを使用して表現できるものは他にもあります。たとえば、運動量ベクトル、複素数など。ただし、これらは three.js で最も一般的な用途です。
+    // Vector2 インスタンスを反復処理すると、対応する順序でそのコンポーネントが生成されます。 (x, y)
     const mouse = new THREE.Vector2();
     const particles: THREE.Points[] = []; // 爆散中のパーティクル群
 
     // マウスクリック時のイベントリスナー
     renderer.domElement.addEventListener('click', (event) => {
         // マウス位置を正規化
+        // getBoundingClientRect:要素の寸法と、そのビューポートに対する相対位置に関する情報を返す
         const rect = canvas.getBoundingClientRect();
+        console.log(rect);
         mouse.x = ((event.clientX - rect.left) / size.width) * 2 - 1;
         mouse.y = -((event.clientY - rect.top) / size.height) * 2 + 1;
-console.log('click');
+
         // Raycasterでクリックされたオブジェクトを取得
+        // 新しい原点と方向で光線を更新
         raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObjects(scene.children);
-console.log(intersects);
+        // scene.children.forEach(item => {
+        //     // console.log(item);
+        //     if(item instanceof MeshStandardMaterial) {
+        //         console.log('inin');
+        //     }
+        // });
+        // レイとの交差をチェックするオブジェクト
+        console.log(planets);
+        console.log(scene.children);
+        const intersects = raycaster.intersectObjects(planets);
+
         if (intersects.length > 0) {
             const target = intersects[0].object;
 
             // 爆散エフェクトを作成
             createExplosion(target, scene);
+            animateParticles();
             scene.remove(target); // 元のオブジェクトを削除
         }
     });
@@ -255,7 +275,7 @@ console.log(intersects);
             positions.needsUpdate = true;
 
             // パーティクルの寿命チェック（透明度を減らす）
-            if (particle.material instanceof MeshPhongMaterial || particle.material instanceof MeshStandardMaterial) {
+            if (particle.material instanceof THREE.Material) {
                 particle.material.opacity -= 0.01;
                 if (particle.material.opacity <= 0) {
                     console.log('in');
@@ -268,7 +288,7 @@ console.log(intersects);
         requestAnimationFrame(animateParticles);
     }
 
-    animateParticles();
+
 }
 
 function createSolarSystem () {
@@ -292,9 +312,27 @@ function createSolarSystem () {
 
     // 太陽
     const sunGeometry = new THREE.SphereGeometry(8, 32, 32);
-    const sunMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xffcc00 });
+    const sunMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffa500, // オレンジ系のベース色
+        emissive: 0xff4500, // 発光色 (赤みのある色)
+        emissiveIntensity: 1.5, // 発光の強さ
+        roughness: 0.5, // 表面の粗さ
+        metalness: 0.1 // メタリック感
+    });
     const sun = new THREE.Mesh(sunGeometry, sunMaterial);
     scene.add(sun);
+
+    // 太陽の大きさに基づいて少し大きい半透明の球体を作成
+    const glowGeometry = new THREE.SphereGeometry(8.5, 32, 32); // 太陽より少し大きめ
+    const glowMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff4500, // 発光色 (オレンジ色)
+        transparent: true, // 透明を有効にする
+        opacity: 0.2, // 半透明の度合い
+    });
+
+    // 半透明の球体メッシュを作成して追加
+    const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
+    scene.add(glowMesh);
 
     // 惑星を格納するデータ
     const planetsData = [
@@ -303,14 +341,15 @@ function createSolarSystem () {
         { size: 4, color: 0xff0000, orbitRadius: 40, speed: 0.01, offset: { x: 15, y: 0 }  },
         { size: 2.5, color: 0xffa500, orbitRadius: 60, speed: 0.005, offset: { x: 30, y: 0 }  },
         { size: 5, color: 0x8888ff, orbitRadius: 80, speed: 0.003, offset: { x: 45, y: 0 }  },
-        { size: 2.5, color: 0x00ff00, orbitRadius: 100, speed: 0.002, offset: { x: 55, y: 0 }  },
-        { size: 4, color: 0xff0000, orbitRadius: 130, speed: 0.001, offset: { x: 73, y: 0 }  },
-        { size: 2, color: 0xffa500, orbitRadius: 160, speed: 0.0007, offset: { x: 90, y: 0 }  },
+        { size: 2.5, color: 0x00ff00, orbitRadius: 100, speed: 0.002, offset: { x: 58, y: 0 }  },
+        { size: 4, color: 0xff0000, orbitRadius: 130, speed: 0.001, offset: { x: 78, y: 0 }  },
+        { size: 2, color: 0xffa500, orbitRadius: 160, speed: 0.0007, offset: { x: 100, y: 0 }  },
     ];
 
     // 惑星グループ
     const planetGroups: THREE.Group[] = [];
     const planets: THREE.Mesh[] = [];
+    planets.push(sun);
 
     planetsData.forEach((planet) => {
         // 惑星の作成
@@ -325,8 +364,11 @@ function createSolarSystem () {
             256
         );
         const orbitMaterial = new THREE.MeshBasicMaterial({
-            color: 0xaaaaaa,
-            side: THREE.DoubleSide,
+            color: 0x007eff, // 色
+            transparent: true, // 透明の表示許可
+            blending: THREE.AdditiveBlending, // ブレンドモード
+            side: THREE.DoubleSide, // 表裏の表示設定
+            depthWrite: false // デプスバッファへの書き込み可否
         });
         const orbit = new THREE.Mesh(orbitGeometry, orbitMaterial);
         orbit.rotation.x = Math.PI / 2; // 軌道を水平に配置
@@ -355,8 +397,6 @@ function createSolarSystem () {
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.target.set(0, 0, 0);
     controls.update();
-
-    console.log(planets);
     // マウスクリックイベント
     // function onClick(event: MouseEvent) {
     //     // マウス位置を正規化
@@ -384,15 +424,118 @@ function createSolarSystem () {
             // 各グループを回転させる（軌道）
             group.rotation.y += planet.speed;
         });
-
         renderer.render(scene, camera);
         requestAnimationFrame(animate);
     };
     createStarrySky(scene);
     // canvas.addEventListener('click', onClick);
-    enableExplosion(scene, camera, renderer, canvas, size);
+    enableExplosion(scene, camera, renderer, canvas, size, planets);
+    animate();
+}
+
+function shooter () {
+    // シーン、カメラ、レンダラーの作成
+    const canvas = document.getElementById('canvas3') as HTMLCanvasElement;
+    const size = { width: window.innerWidth, height: 600 };
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(100, size.width / size.height, 0.1, 2000);
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true});
+    renderer.setSize(size.width, size.height);
+
+    // カメラの位置設定
+    camera.position.z = 5;
+
+    const spaceshipGeometry = new THREE.BoxGeometry(1, 1, 2);
+    const spaceshipMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    const spaceship = new THREE.Mesh(spaceshipGeometry, spaceshipMaterial);
+    scene.add(spaceship);
+
+    const spaceshipSpeed = 0.1;
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowUp') spaceship.position.y -= spaceshipSpeed;
+        if (event.key === 'ArrowDown') spaceship.position.y += spaceshipSpeed;
+        if (event.key === 'ArrowLeft') spaceship.position.x -= spaceshipSpeed;
+        if (event.key === 'ArrowRight') spaceship.position.x += spaceshipSpeed;
+    });
+
+    function createAsteroid() {
+        const asteroidGeometry = new THREE.SphereGeometry(Math.random() + 0.5, 16, 16);
+        const asteroidMaterial = new THREE.MeshBasicMaterial({ color: 0x888888 });
+        const asteroid = new THREE.Mesh(asteroidGeometry, asteroidMaterial);
+        asteroid.position.set(
+            Math.random() * 10 - 5,  // ランダムな位置X
+            Math.random() * 10 - 5,  // ランダムな位置Y
+            Math.random() * 10 - 5   // ランダムな位置Z
+        );
+        scene.add(asteroid);
+        return asteroid;
+    }
+
+    function moveAsteroids() {
+        asteroids.forEach(asteroid => {
+            asteroid.position.z += 0.05;  // アステロイドをZ軸方向に移動
+            if (asteroid.position.z > 5) {
+                asteroid.position.z = -5;
+                asteroid.position.x = Math.random() * 10 - 5;
+                asteroid.position.y = Math.random() * 10 - 5;
+            }
+        });
+    }
+
+    function createBullet() {
+        const bulletGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+        const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
+        bullet.position.set(spaceship.position.x, spaceship.position.y, spaceship.position.z);
+        scene.add(bullet);
+        return bullet;
+    }
+
+    function moveBullets() {
+        bullets.forEach(bullet => {
+            bullet.position.z -= 0.2;
+        });
+    }
+
+    function checkCollisions() {
+        bullets.forEach(bullet => {
+            asteroids.forEach((asteroid, index) => {
+                const distance = bullet.position.distanceTo(asteroid.position);
+                if (distance < 1) {  // 衝突判定（弾とアステロイドが接触）
+                    scene.remove(asteroid);  // アステロイドを削除
+                    scene.remove(bullet);    // 弾を削除
+                    asteroids.splice(index, 1);
+                    bullets = bullets.filter(b => b !== bullet);
+                }
+            });
+        });
+    }
+
+    // 複数のアステロイドを生成
+    const asteroids:THREE.Mesh[] = [];
+    for (let i = 0; i < 5; i++) {
+        asteroids.push(createAsteroid());
+    }
+
+    let bullets:THREE.Mesh[] = [];
+    document.addEventListener('keydown', (event) => {
+        if (event.key === ' ') {
+            bullets.push(createBullet());
+        }
+    });
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        moveAsteroids();  // アステロイドの移動
+        moveBullets();    // 弾の移動
+        checkCollisions(); // 衝突判定
+
+        renderer.render(scene, camera);
+    }
     animate();
 }
 
 createSolarTest();
 createSolarSystem();
+shooter();
