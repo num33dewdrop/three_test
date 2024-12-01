@@ -1,6 +1,13 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import '../scss/style.scss';
+// import {ColladaLoader} from "three/examples/jsm/loaders/ColladaLoader";
+import {GLTFLoader} from "three/examples/jsm/loaders/GLTFLoader";
+import {OBJLoader} from "three/examples/jsm/loaders/OBJLoader";
+import {DDSLoader} from "three/examples/jsm/loaders/DDSLoader";
+import {MTLLoader} from "three/examples/jsm/loaders/MTLLoader";
+// import {Object3D} from "three";
+// import {TDSLoader} from "three/examples/jsm/loaders/TDSLoader";
 
 // シーン(scene)
 // 3次元空間を表し、3Dオブジェクトやライトが加えられる。
@@ -16,52 +23,85 @@ import '../scss/style.scss';
 // レンダラー(renderer)
 // カメラから受け取った画像を、画面の再描画のたびに更新する。
 
-const appElement = document.querySelector<HTMLDivElement>('#appElement')!;
+async function test () {
 //
 // three.jsセットアップ
 //
 // 座表軸
-const axes = new THREE.AxesHelper();
+    const axes = new THREE.AxesHelper();
 // シーンを初期化
-const scene = new THREE.Scene();
-scene.add(axes);
+    const scene = new THREE.Scene();
+    const loader = new GLTFLoader();
+    const textureLoader = new THREE.TextureLoader();
+    // GLTFファイルのパスを指定
+    const gltf = await loader.loadAsync('./assets/objs/wolf/Wolf-Blender-2.82a.glb');
+    // Collada形式のモデルデータを読み込む
+    // const loader = new ColladaLoader();
+    // // Colladaファイルのパスを指定
+    // const collada = await loader.loadAsync('./assets/objs/aircraft.dae');
+    const texture = textureLoader.load('./assets/objs/wolf/Material__wolf_col_tga_diffuse_jpeg.jpg');
+    const wolf = gltf.scene;
+    wolf.traverse((child) => {
+        if (child.isMesh) {
+            child.material.map = texture; // ベースカラー用のテクスチャを適用
+            child.material.needsUpdate = true; // 更新を反映
+        }
+    });
+
+
+    const appElement = document.querySelector<HTMLDivElement>('#appElement')!;
+    scene.add(axes);
+    scene.add(wolf);
+
+    //ライトの位置と方向を表す平面と線で構成 DirectionalLight(色, 光の強さ)
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
+    //3D空間全体に均等に光を当てる AmbientLight(色, 光の強さ)
+    const ambientLight = new THREE.AmbientLight('gray');
+    //ライトの位置
+    directionalLight.position.set(1, 1, 1);
+    //シーンにセット
+    scene.add(ambientLight);
+    scene.add(directionalLight);
 
 // カメラを初期化
-const camera = new THREE.PerspectiveCamera(50, appElement.offsetWidth / appElement.offsetHeight);
-camera.position.set(1, 1, 1);
-camera.lookAt(scene.position);
+    const camera = new THREE.PerspectiveCamera(50, appElement.offsetWidth / appElement.offsetHeight);
+    camera.position.set(1, 1, 1);
+    camera.lookAt(scene.position);
 
 // レンダラーの初期化
 // antialias:物体の輪郭が滑らかになる
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setClearColor(0xf6f5f4, 1.0); // 背景色
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setClearColor(0xf6f5f4, 1.0); // 背景色
 //デバイスピクセル比を設定。設定しないとスマホだとぼやけて表示される
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setSize(appElement.offsetWidth, appElement.offsetHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(appElement.offsetWidth, appElement.offsetHeight);
 // レンダラーをDOMに追加
-appElement.appendChild(renderer.domElement);
+    appElement.appendChild(renderer.domElement);
 
 // カメラコントローラー設定
-const orbitControls = new OrbitControls(camera, renderer.domElement);
+    const orbitControls = new OrbitControls(camera, renderer.domElement);
 //垂直方向にどれだけ遠くまで回転できるか、上限。範囲は 0 から Math.PI ラジアンで、デフォルトは Math.PI(円周率)
-orbitControls.maxPolarAngle = Math.PI;
+    orbitControls.maxPolarAngle = Math.PI;
 //ドリーイン(カメラを被写体に近づけていく撮影方法)できる距離 ( PerspectiveCameraのみ )。デフォルトは 0
-orbitControls.minDistance = 0.1;
+    orbitControls.minDistance = 0.1;
 //ドリーアウトできる距離 ( PerspectiveCameraのみ )。デフォルトは Infinity
-orbitControls.maxDistance = 10;
+    orbitControls.maxDistance = 10;
 // カメラの自動回転設定
-orbitControls.autoRotate = true;
+//     orbitControls.autoRotate = true;
 // カメラの自動回転速度
-orbitControls.autoRotateSpeed = 1.0;
+//     orbitControls.autoRotateSpeed = 1.0;
 
 // 描画ループを開始
-renderer.setAnimationLoop(() => {
-    // カメラコントローラーを更新
-    orbitControls.update();
+    renderer.setAnimationLoop(() => {
+        // カメラコントローラーを更新
+        orbitControls.update();
 
-    // 描画する
-    renderer.render(scene, camera);
-});
+        // 描画する
+        renderer.render(scene, camera);
+    });
+}
+
+
 
 
 function createSolarTest() {
@@ -433,7 +473,7 @@ function createSolarSystem () {
     animate();
 }
 
-function shooter () {
+async function shooter () {
     // シーン、カメラ、レンダラーの作成
     const canvas = document.getElementById('canvas3') as HTMLCanvasElement;
     const size = { width: window.innerWidth, height: 600 };
@@ -441,26 +481,89 @@ function shooter () {
     const camera = new THREE.PerspectiveCamera(100, size.width / size.height, 0.1, 2000);
     const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true});
     renderer.setSize(size.width, size.height);
+    // renderer.setClearColor(0xf6f5f4, 1.0); // 背景色
 
     // カメラの位置設定
-    camera.position.z = 5;
+    camera.position.z = 4;
 
-    const spaceshipGeometry = new THREE.BoxGeometry(1, 1, 2);
-    const spaceshipMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    const spaceship = new THREE.Mesh(spaceshipGeometry, spaceshipMaterial);
-    scene.add(spaceship);
+    // GLTF形式のモデルデータを読み込む
+    // const loader = new GLTFLoader();
+    // // GLTFファイルのパスを指定
+    // const gltf = await loader.loadAsync('./assets/objs/wolf/Wolf-Blender-2.82a.gltf');
+    // Collada形式のモデルデータを読み込む
+    // 3DS形式のモデルデータを読み込む
+    // const loader = new TDSLoader();
+    // // テクスチャーのパスを指定
+    // loader.setResourcePath('./assets/objs/aircraft/textures/');
+    // // 3dsファイルのパスを指定
+    // const spaceship = await loader.loadAsync('./assets/objs/aircraft/Aircraft_3ds.3ds');
 
-    const spaceshipSpeed = 0.1;
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'ArrowUp') spaceship.position.y -= spaceshipSpeed;
-        if (event.key === 'ArrowDown') spaceship.position.y += spaceshipSpeed;
-        if (event.key === 'ArrowLeft') spaceship.position.x -= spaceshipSpeed;
-        if (event.key === 'ArrowRight') spaceship.position.x += spaceshipSpeed;
-    });
+    // テクスチャの読み込み
+
+    const manager = new THREE.LoadingManager();
+    manager.addHandler(/\.dds$/i, new DDSLoader());
+    new MTLLoader(manager).load(
+        './assets/objs/turtle/13103_pearlturtle_v1_l2.mtl',
+        // ロード完了時の処理
+        function (materials) {
+            materials.preload();
+            const objLoader = new OBJLoader();
+            objLoader.setMaterials(materials).load(
+                './assets/objs/turtle/13103_pearlturtle_v1_l2.obj',
+                // ロード完了時の処理
+                function (obj) {
+                    // シーンへのモデルの追加
+                    scene.add(obj);
+                    obj.rotation.x = - (Math.PI / 2);
+                    obj.rotation.z = Math.PI;
+                    obj.scale.x = 0.2;
+                    obj.scale.y = 0.2;
+                    obj.scale.z = 0.2;
+                    const spaceshipSpeed = 0.1;
+                    document.addEventListener('keydown', (event) => {
+                        if (event.key === '.') obj.position.y -= spaceshipSpeed;
+                        if (event.key === 'l') obj.position.y += spaceshipSpeed;
+                        if (event.key === ',') obj.position.x -= spaceshipSpeed;
+                        if (event.key === '/') obj.position.x += spaceshipSpeed;
+                    });
+
+                    document.addEventListener('keydown', (event) => {
+                        if (event.key === ' ') {
+                            bullets.push(createBullet(obj));
+                        }
+                    });
+                },
+            );
+        });
+
+
+    // const spaceshipGeometry = new THREE.BoxGeometry(1, 1, 2);
+    // const spaceshipMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    // const spaceship = new THREE.Mesh(spaceshipGeometry, spaceshipMaterial);
+    // scene.add(spaceship);
+    // spaceship.rotation.x = - (Math.PI / 2);
+
+    //ライトの位置と方向を表す平面と線で構成 DirectionalLight(色, 光の強さ)
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
+    //3D空間全体に均等に光を当てる AmbientLight(色, 光の強さ)
+    const ambientLight = new THREE.AmbientLight('gray', 3);
+    //ライトの位置
+    directionalLight.position.set(1, 1, 1);
+    //シーンにセット
+    scene.add(ambientLight);
+    scene.add(directionalLight);
+
+    // const spaceshipSpeed = 0.1;
+    // document.addEventListener('keydown', (event) => {
+    //     if (event.key === 'l') spaceship.position.y -= spaceshipSpeed;
+    //     if (event.key === '.') spaceship.position.y += spaceshipSpeed;
+    //     if (event.key === ',') spaceship.position.x -= spaceshipSpeed;
+    //     if (event.key === '/') spaceship.position.x += spaceshipSpeed;
+    // });
 
     function createAsteroid() {
-        const asteroidGeometry = new THREE.SphereGeometry(Math.random() + 0.5, 16, 16);
-        const asteroidMaterial = new THREE.MeshBasicMaterial({ color: 0x888888 });
+        const asteroidGeometry = new THREE.SphereGeometry(Math.random(), 16, 16);
+        const asteroidMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
         const asteroid = new THREE.Mesh(asteroidGeometry, asteroidMaterial);
         asteroid.position.set(
             Math.random() * 10 - 5,  // ランダムな位置X
@@ -482,11 +585,11 @@ function shooter () {
         });
     }
 
-    function createBullet() {
+    function createBullet(obj:THREE.Group) {
         const bulletGeometry = new THREE.SphereGeometry(0.1, 8, 8);
         const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
         const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
-        bullet.position.set(spaceship.position.x, spaceship.position.y, spaceship.position.z);
+        bullet.position.set(obj.position.x, obj.position.y, obj.position.z);
         scene.add(bullet);
         return bullet;
     }
@@ -518,11 +621,11 @@ function shooter () {
     }
 
     let bullets:THREE.Mesh[] = [];
-    document.addEventListener('keydown', (event) => {
-        if (event.key === ' ') {
-            bullets.push(createBullet());
-        }
-    });
+    // document.addEventListener('keydown', (event) => {
+    //     if (event.key === ' ') {
+    //         bullets.push(createBullet(spaceship));
+    //     }
+    // });
 
     function animate() {
         requestAnimationFrame(animate);
@@ -534,8 +637,10 @@ function shooter () {
         renderer.render(scene, camera);
     }
     animate();
+    createStarrySky(scene);
 }
 
+test();
 createSolarTest();
 createSolarSystem();
 shooter();

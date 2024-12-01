@@ -138,6 +138,10 @@ module.exports = {
         {
           from: `${__dirname}/resources/img/`,
           to: `${__dirname}/public/assets/img/`
+        },
+        {
+          from: `${__dirname}/resources/objs/`,
+          to: `${__dirname}/public/assets/objs/`
         }
       ]
     }),
